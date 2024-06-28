@@ -4,7 +4,7 @@ const {Schema,model}=mongoose
 const deliveryVehicleSchema=new Schema({
    registrationNumber: {
     type: String,
-    unique: true,
+   
     required: true
   },
   vehicleType: {

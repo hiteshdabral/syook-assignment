@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema, model } = mongoose;
-const Counter=require("./counter-model")
+const Counter = require("./counter-model");
+const DeliveryVehicle = require("../models/delivery-vehicle-model.js");
 
 const orderSchema = new Schema({
   orderNumber: {
@@ -31,37 +32,56 @@ const orderSchema = new Schema({
     default: false,
   },
 });
+orderSchema.pre("save", async function (next) {
+  const order = this;
 
-orderSchema.pre('save', function (next) {
-    const order = this;
-  
-    if (order.isNew && !order.orderNumber) {
-      Counter.findByIdAndUpdate(
-        { _id: 'orderNumber' },
+  if (order.isNew && !order.orderNumber) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        { name: "orderNumber" },
         { $inc: { seq: 1 } },
-        { new: true, upsert: true },
-        (err, counter) => {
-          if (err) return next(err);
-          order.orderNumber = counter.seq.toString().padStart(4, '0');
-          next();
-        }
+        { new: true, upsert: true }
       );
-    } else {
+
+      order.orderNumber = counter.seq.toString().padStart(4, "0");
       next();
+    } catch (err) {
+      return next(err);
     }
-  });
-
-
-  orderSchema.pre('findOneAndUpdate', async function (next) {
-    const update = this.getUpdate();
-    if (update.isDelivered === true) {
-      const order = await this.model.findOne(this.getQuery());
-      if (!order.isDelivered) {
-        await mongoose.model('DeliveryVehicle').findByIdAndUpdate(order.deliveryVehicleId, { $inc: { activeOrdersCount: -1 } });
-      }
-    }
+  } else {
     next();
-  });
+  }
+});
+
+orderSchema.post("save", async function (order) {
+  try {
+    const vehicle = await DeliveryVehicle.findById(order.deliveryVehicleId);
+    if (vehicle) {
+      vehicle.activeOrdersCount = vehicle.activeOrdersCount + 1;
+      await vehicle.save();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+});
+orderSchema.pre("findOneAndUpdate", async function (next) {
+  const update = this.getUpdate();
+  console.log(update);
+  if (update.isDelivered === true) {
+    try {
+      const order = await Order.findOne(this.getQuery());
+      console.log(order);
+      if (order && !order.isDelivered) {
+        await DeliveryVehicle.findByIdAndUpdate(order.deliveryVehicleId, {
+          $inc: { activeOrdersCount: -1 },
+        });
+      }
+    } catch (err) {
+      console.error("Error updating activeOrdersCount:", err);
+    }
+  }
+  next();
+});
 
 const Order = model("Order", orderSchema);
 

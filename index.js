@@ -14,16 +14,17 @@ dbConnect()
 const userCtrl=require("./app/controller/user-controller")
 const itemCtrl=require("./app/controller/item-controller")
 const customerCtrl=require("./app/controller/customer-controller")
+const deliveryCtrl = require("./app/controller/delivery-controller")
+const orderCtrl=require("./app/controller/order-controller")
 
 //import validation
 const {userLoginValidation,userRegistrationValidation}=require("./app/validations/user-schema-validation")
-const itemsValidation =require("./app/validations/items-validation-schema")
+const itemsValidation =require("./app/validations/items-validation-schema")//import validation
 const customerValidation=require("./app/validations/customer-validation-schema")
+const deliveryVehicleValidation=require("./app/validations/delivery-vehicle-validation")
+
 //import middleware
 const authenticateUser=require("./app/middleware/authenticate")
-const deliveryCtrl = require("./app/controller/delivery-controller")
-
-
 
 
 //api - FOR USER REGISTER & LOGIN
@@ -32,12 +33,21 @@ app.post('/login',checkSchema(userLoginValidation),userCtrl.login)
 
 //api - FOR Item creation
 app.post('/item-creation',authenticateUser,checkSchema(itemsValidation),itemCtrl.create)
+app.get("/item-show",authenticateUser,itemCtrl.show)
+app.put("/item-update/:id",authenticateUser,itemCtrl.update)
 
-//api: FOR customer creation 
-app.post('/customer-creation',authenticateUser,checkSchema(customerValidation),customerCtrl.create)
+
 
 //api -FOR delivery vehicle
-app.post("/delivery-vehicle/registration",authenticateUser,deliveryCtrl.create)
+app.post("/delivery-vehicle/registration",authenticateUser,checkSchema(deliveryVehicleValidation),deliveryCtrl.create)
+app.get("/delivery-vehicle-show",authenticateUser,deliveryCtrl.show)
+app.put("/delivery-vehicle-update/:id",authenticateUser,deliveryCtrl.update)
+
+//api-FOR ORDER CREATION
+app.post("/order-creation",orderCtrl.create)
+app.get("/order-show",authenticateUser,orderCtrl.show)
+app.patch("/order-update/:id",authenticateUser,orderCtrl.updateOrder)
+
 
 app.listen(process.env.PORT,()=>{
     console.log("listening on port :"+process.env.PORT)
